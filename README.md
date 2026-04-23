@@ -52,14 +52,25 @@ To generate an API token: cPanel → **Security** → **Manage API Tokens**.
 
 ## Automation
 
-Add a crontab entry to run every 5 minutes:
+Open your crontab with `crontab -e` and add one of the entries below.
 
-```bash
-crontab -e
-```
+```cron
+# Cron fields: minute  hour  day-of-month  month  day-of-week
 
-```
+# Every 5 minutes (recommended for fast failover)
 */5 * * * * cd /path/to/WanderDNS && /usr/bin/python3 update_ddns.py >> /var/log/wanderdns.log 2>&1
+
+# Every 15 minutes
+*/15 * * * * cd /path/to/WanderDNS && /usr/bin/python3 update_ddns.py >> /var/log/wanderdns.log 2>&1
+
+# Every hour
+0 * * * * cd /path/to/WanderDNS && /usr/bin/python3 update_ddns.py >> /var/log/wanderdns.log 2>&1
+
+# On boot (catches IP changes after a restart)
+@reboot cd /path/to/WanderDNS && /usr/bin/python3 update_ddns.py >> /var/log/wanderdns.log 2>&1
+
+# Daily force-update at midnight (ensures the record stays fresh)
+0 0 * * * cd /path/to/WanderDNS && /usr/bin/python3 update_ddns.py --force >> /var/log/wanderdns.log 2>&1
 ```
 
 ## License
