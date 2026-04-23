@@ -35,6 +35,10 @@ def load_config():
         print(f"Error: missing required variables in {ENV_FILE}: {', '.join(missing)}")
         sys.exit(1)
 
+    host = config["CPANEL_HOST"]
+    if not host.startswith(("http://", "https://")):
+        config["CPANEL_HOST"] = "https://" + host
+
     return config
 
 
