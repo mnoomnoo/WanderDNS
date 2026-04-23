@@ -5,6 +5,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 try:
     import requests
@@ -37,7 +38,11 @@ def load_config():
 
     host = config["CPANEL_HOST"]
     if not host.startswith(("http://", "https://")):
-        config["CPANEL_HOST"] = "https://" + host
+        host = "https://" + host
+    parsed = urlparse(host)
+    if not parsed.port:
+        host = f"{parsed.scheme}://{parsed.hostname}:2083"
+    config["CPANEL_HOST"] = host
 
     return config
 
