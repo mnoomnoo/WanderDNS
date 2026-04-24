@@ -93,18 +93,20 @@ def update_ddns(config, ip, dry_run=False):
         print(f"Available entries: {available}")
         sys.exit(1)
 
-    update_url = entry["url"]
+    entry_id = entry["id"]
+
+    # The webcall URL is self-authenticating — no auth headers needed
+    webcall_url = f"{host}/cpanelwebcall/{entry_id}"
 
     if dry_run:
-        print(f"[dry-run] Would call: GET {update_url}")
+        print(f"[dry-run] Would call: GET {webcall_url}")
         return
 
-    # Step 2: hit the update URL — cPanel reads the IP from the request source
     try:
-        resp = requests.get(update_url, timeout=15)
+        resp = requests.get(webcall_url, timeout=15)
         resp.raise_for_status()
     except Exception as e:
-        print(f"Error calling DDNS update URL: {e}")
+        print(f"Error calling webcall URL: {e}")
         sys.exit(1)
 
     print(f"Success: {config['CPANEL_DOMAIN']} updated to {ip}")
