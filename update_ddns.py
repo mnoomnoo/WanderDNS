@@ -69,30 +69,48 @@ def write_cached_ip(ip):
 
 def update_ddns(config, ip, dry_run=False):
     host = config["CPANEL_HOST"].rstrip("/")
-    url = f"{host}/execute/DynamicDNS/update"
-    params = {"domain": config["CPANEL_DOMAIN"], "ip": ip}
     headers = {"Authorization": f"cpanel {config['CPANEL_USERNAME']}:{config['CPANEL_API_TOKEN']}"}
 
-    if dry_run:
-        print(f"[dry-run] Would call: GET {url}")
-        print(f"[dry-run] Params: {params}")
-        return
-
+    # Step 1: list DDNS entries to find the per-domain update URL
     try:
-        resp = requests.get(url, params=params, headers=headers, timeout=15)
+        resp = requests.get(f"{host}/execute/DynamicDNS/list", headers=headers, timeout=15)
         resp.raise_for_status()
         data = resp.json()
     except Exception as e:
-        print(f"Error calling cPanel API: {e}")
+        print(f"Error listing DDNS entries: {e}")
         sys.exit(1)
 
-    if data.get("status") == 1:
-        print(f"Success: {config['CPANEL_DOMAIN']} updated to {ip}")
-        write_cached_ip(ip)
-    else:
+    if data.get("status") != 1:
         errors = data.get("errors") or data.get("messages") or data
         print(f"cPanel API error: {errors}")
         sys.exit(1)
+
+    entries = data.get("data") or []
+    entry = next((e for e in entries if e.get("domain") == config["CPANEL_DOMAIN"]), None)
+    if not entry:
+        available = [e.get("domain") for e in entries]
+        print(f"Error: no Dynamic DNS entry found for '{config['CPANEL_DOMAIN']}'")
+        print(f"Available entries: {available}")
+        sys.exit(1)
+
+    entry_id = entry["id"]
+
+    # The webcall URL is self-authenticating — no auth headers needed
+    webcall_url = f"{host}/cpanelwebcall/{entry_id}"
+
+    if dry_run:
+        print(f"[dry-run] Would call: GET {webcall_url}")
+        return
+
+    try:
+        resp = requests.get(webcall_url, timeout=15)
+        resp.raise_for_status()
+    except Exception as e:
+        print(f"Error calling webcall URL: {e}")
+        sys.exit(1)
+
+    print(f"Success: {config['CPANEL_DOMAIN']} updated to {ip}")
+    write_cached_ip(ip)
 
 
 def main():
